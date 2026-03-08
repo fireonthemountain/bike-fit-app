@@ -216,15 +216,6 @@
 
       <div class="results-controls">
         <div class="filter-group">
-          <label>Sort by:</label>
-          <select id="sort-select">
-            <option value="score">Best Fit Score</option>
-            <option value="brand">Brand A-Z</option>
-            <option value="stack">Stack</option>
-            <option value="reach">Reach</option>
-          </select>
-        </div>
-        <div class="filter-group">
           <label>Brand:</label>
           <select id="brand-filter">
             <option value="all">All Brands</option>
@@ -239,11 +230,47 @@
           </select>
         </div>
         <div class="filter-group">
+          <label>Price:</label>
+          <select id="price-filter">
+            <option value="all">All Prices</option>
+            <option value="budget">Budget (&lt;$1,500)</option>
+            <option value="mid">Mid ($1,500–$3,000)</option>
+            <option value="upper">Upper-Mid ($3,000–$5,000)</option>
+            <option value="premium">Premium ($5,000–$8,000)</option>
+            <option value="ultra">Ultra-Premium ($8,000+)</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Bikepacking:</label>
+          <select id="bikepack-filter">
+            <option value="all">Any</option>
+            <option value="3">Excellent (★★★)</option>
+            <option value="2+">Good+ (★★+)</option>
+          </select>
+        </div>
+        <div class="filter-group">
           <span id="result-count"></span>
         </div>
       </div>
 
-      <div class="results-grid" id="results-grid"></div>
+      <div class="results-table-wrap">
+        <table class="results-table" id="results-table">
+          <thead>
+            <tr>
+              <th data-sort="brand" class="sortable">Brand / Model <span class="sort-arrow"></span></th>
+              <th data-sort="score" class="sortable sorted desc">Fit <span class="sort-arrow">▼</span></th>
+              <th data-sort="value" class="sortable">Value <span class="sort-arrow"></span></th>
+              <th data-sort="stack" class="sortable">Stack <span class="sort-arrow"></span></th>
+              <th data-sort="reach" class="sortable">Reach <span class="sort-arrow"></span></th>
+              <th data-sort="sr" class="sortable">S/R <span class="sort-arrow"></span></th>
+              <th data-sort="price" class="sortable">Price <span class="sort-arrow"></span></th>
+              <th data-sort="bikepack" class="sortable">Bikepack <span class="sort-arrow"></span></th>
+              <th>Compare</th>
+            </tr>
+          </thead>
+          <tbody id="results-tbody"></tbody>
+        </table>
+      </div>
 
       <!-- Geometry comparison overlay -->
       <div id="compare-panel" class="compare-panel hidden">

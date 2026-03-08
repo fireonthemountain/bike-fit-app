@@ -135,6 +135,8 @@ const FitEngine = (() => {
         bbDrop:    bike[B.BB_DROP],
         standover: bike[B.STANDOVER],
         sr: Math.round(sr * 1000) / 1000,
+        price:     bike[B.PRICE] || 0,
+        bikepack:  bike[B.BIKEPACK] || 0,
       },
     };
   }

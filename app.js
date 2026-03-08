@@ -9,6 +9,7 @@
   let allResults = [];
   let ideal = null;
   let compareList = [];
+  let currentSort = { key: "score", dir: "desc" };
 
   // ── Start ──
   $("#start-btn").addEventListener("click", () => {
@@ -113,11 +114,31 @@
     ideal = FitEngine.computeIdeal(heightCm, inseamCm, armspanCm, style);
     allResults = FitEngine.scoreAll(ideal);
 
+    // Compute value scores
+    computeValueScores();
+
     renderResults();
     $("#wizard").classList.add("hidden");
     $("#results").classList.remove("hidden");
     window.scrollTo({ top: 0, behavior: "smooth" });
   });
+
+  // ── Value score computation ──
+  function computeValueScores() {
+    const prices = allResults.filter(r => r.bike.price > 0).map(r => r.bike.price);
+    const maxPrice = Math.max(...prices, 1);
+    const minPrice = Math.min(...prices, 0);
+    const range = maxPrice - minPrice || 1;
+
+    allResults.forEach(r => {
+      if (r.bike.price > 0) {
+        const normalizedPrice = (r.bike.price - minPrice) / range;
+        r.valueScore = Math.round(r.score * (1 + (1 - normalizedPrice)));
+      } else {
+        r.valueScore = 0;
+      }
+    });
+  }
 
   // ── Back to measurements ──
   $("#back-to-measurements").addEventListener("click", () => {
@@ -129,7 +150,7 @@
   function renderResults() {
     renderSummary();
     populateBrandFilter();
-    renderGrid(getFilteredResults());
+    renderTable(getFilteredResults());
   }
 
   function renderSummary() {
@@ -159,99 +180,131 @@
     let results = [...allResults];
     const brand = $("#brand-filter").value;
     const fit = $("#fit-filter").value;
-    const sort = $("#sort-select").value;
+    const price = $("#price-filter").value;
+    const bikepack = $("#bikepack-filter").value;
 
     if (brand !== "all") results = results.filter(r => r.bike.brand === brand);
     if (fit === "excellent") results = results.filter(r => r.rating === "excellent");
     else if (fit === "good") results = results.filter(r => r.rating === "excellent" || r.rating === "good");
 
-    if (sort === "brand") results.sort((a, b) => a.bike.brand.localeCompare(b.bike.brand) || b.score - a.score);
-    else if (sort === "stack") results.sort((a, b) => a.bike.stack - b.bike.stack);
-    else if (sort === "reach") results.sort((a, b) => a.bike.reach - b.bike.reach);
-    // default: score desc (already sorted)
+    if (price === "budget") results = results.filter(r => r.bike.price > 0 && r.bike.price < 1500);
+    else if (price === "mid") results = results.filter(r => r.bike.price >= 1500 && r.bike.price <= 3000);
+    else if (price === "upper") results = results.filter(r => r.bike.price > 3000 && r.bike.price <= 5000);
+    else if (price === "premium") results = results.filter(r => r.bike.price > 5000 && r.bike.price <= 8000);
+    else if (price === "ultra") results = results.filter(r => r.bike.price > 8000);
+
+    if (bikepack === "3") results = results.filter(r => r.bike.bikepack === 3);
+    else if (bikepack === "2+") results = results.filter(r => r.bike.bikepack >= 2);
+
+    // Sort
+    const sk = currentSort.key;
+    const dir = currentSort.dir === "asc" ? 1 : -1;
+    results.sort((a, b) => {
+      let va, vb;
+      if (sk === "brand") {
+        va = a.bike.brand + " " + a.bike.model;
+        vb = b.bike.brand + " " + b.bike.model;
+        return dir * va.localeCompare(vb);
+      }
+      if (sk === "score") { va = a.score; vb = b.score; }
+      else if (sk === "value") { va = a.valueScore; vb = b.valueScore; }
+      else if (sk === "stack") { va = a.bike.stack; vb = b.bike.stack; }
+      else if (sk === "reach") { va = a.bike.reach; vb = b.bike.reach; }
+      else if (sk === "sr") { va = a.bike.sr; vb = b.bike.sr; }
+      else if (sk === "price") { va = a.bike.price || 99999; vb = b.bike.price || 99999; }
+      else if (sk === "bikepack") { va = a.bike.bikepack; vb = b.bike.bikepack; }
+      else { va = a.score; vb = b.score; }
+      return dir * (va - vb);
+    });
 
     return results;
   }
 
-  function renderGrid(results) {
-    const grid = $("#results-grid");
+  // ── Bikepacking label ──
+  function bikepackLabel(val) {
+    if (val === 3) return '<span class="bp-stars bp3" title="Excellent bikepacking">★★★</span>';
+    if (val === 2) return '<span class="bp-stars bp2" title="Good bikepacking">★★</span>';
+    if (val === 1) return '<span class="bp-stars bp1" title="Limited bikepacking">★</span>';
+    return '<span class="bp-stars bp0" title="Race-focused">—</span>';
+  }
+
+  // ── Price format ──
+  function fmtPrice(p) {
+    if (!p) return '<span class="text-muted">—</span>';
+    return "$" + p.toLocaleString();
+  }
+
+  // ── Render table ──
+  function renderTable(results) {
+    const tbody = $("#results-tbody");
     $("#result-count").textContent = `${results.length} bike${results.length !== 1 ? "s" : ""} found`;
 
     if (results.length === 0) {
-      grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:3rem;color:var(--text3)">No bikes match your filters. Try broadening your search.</div>';
+      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--text3)">No bikes match your filters.</td></tr>';
       return;
     }
 
-    grid.innerHTML = results.map((r, i) => {
+    const deltaClass = v => v > 5 ? "over" : v < -5 ? "under" : "ideal";
+    const deltaStr = v => v > 0 ? `+${v}` : `${v}`;
+
+    tbody.innerHTML = results.map((r, i) => {
       const b = r.bike;
       const d = r.deltas;
-      const deltaClass = v => v > 5 ? "over" : v < -5 ? "under" : "ideal";
-      const deltaStr = v => v > 0 ? `+${v}` : `${v}`;
       const checked = compareList.some(c => c.bike.brand === b.brand && c.bike.model === b.model && c.bike.size === b.size);
 
       return `
-        <div class="bike-card ${r.rating}" data-idx="${i}">
-          <div class="card-top">
-            <div>
+        <tr class="result-row ${r.rating}" data-idx="${i}">
+          <td class="col-bike">
+            <div class="bike-name-cell">
               <span class="bike-brand">${b.brand}</span>
-              <div class="bike-model">${b.model}</div>
-              <span class="bike-size">Size ${b.size} &middot; ${b.year}</span>
+              <span class="bike-model">${b.model}</span>
+              <span class="bike-size">Size ${b.size} · ${b.year}</span>
             </div>
-            <span class="fit-badge ${r.rating}">${r.score}% ${r.rating}</span>
-          </div>
-          <div class="score-bar"><div class="score-fill ${r.rating}" style="width:${r.score}%"></div></div>
-          <div class="card-geo">
-            <div class="geo-item">
-              <span class="geo-label">Stack</span>
-              <span class="geo-val">${b.stack}</span>
-              <span class="geo-delta ${deltaClass(d.stack)}">${deltaStr(d.stack)}mm</span>
+          </td>
+          <td class="col-score"><span class="fit-badge ${r.rating}">${r.score}%</span></td>
+          <td class="col-value">${r.valueScore > 0 ? r.valueScore : '—'}</td>
+          <td class="col-num">${b.stack} <small class="geo-delta ${deltaClass(d.stack)}">${deltaStr(d.stack)}</small></td>
+          <td class="col-num">${b.reach} <small class="geo-delta ${deltaClass(d.reach)}">${deltaStr(d.reach)}</small></td>
+          <td class="col-num">${b.sr}</td>
+          <td class="col-num">${fmtPrice(b.price)}</td>
+          <td class="col-center">${bikepackLabel(b.bikepack)}</td>
+          <td class="col-center">
+            <input type="checkbox" class="compare-cb" data-idx="${i}" ${checked ? "checked" : ""}>
+          </td>
+        </tr>
+        <tr class="detail-row hidden" id="detail-${i}">
+          <td colspan="9">
+            <div class="detail-content">
+              <div class="detail-grid">
+                <div class="detail-row-item"><span class="dlabel">Eff. Top Tube</span><span class="dval">${b.ett}mm <small class="${deltaClass(d.ett)}">(${deltaStr(d.ett)})</small></span></div>
+                <div class="detail-row-item"><span class="dlabel">Head Tube</span><span class="dval">${b.htLength}mm</span></div>
+                <div class="detail-row-item"><span class="dlabel">Seat Tube</span><span class="dval">${b.stLength}mm <small class="${deltaClass(d.seatTube)}">(${deltaStr(d.seatTube)})</small></span></div>
+                <div class="detail-row-item"><span class="dlabel">HT Angle</span><span class="dval">${b.htAngle}&deg;</span></div>
+                <div class="detail-row-item"><span class="dlabel">ST Angle</span><span class="dval">${b.stAngle}&deg;</span></div>
+                <div class="detail-row-item"><span class="dlabel">Chainstay</span><span class="dval">${b.chainstay}mm</span></div>
+                <div class="detail-row-item"><span class="dlabel">Wheelbase</span><span class="dval">${b.wheelbase}mm</span></div>
+                <div class="detail-row-item"><span class="dlabel">BB Drop</span><span class="dval">${b.bbDrop}mm</span></div>
+                ${b.standover ? `<div class="detail-row-item"><span class="dlabel">Standover</span><span class="dval">${b.standover}mm</span></div>` : ""}
+              </div>
+              <div class="fit-explanation">${FitEngine.explainFit(r, ideal)}</div>
             </div>
-            <div class="geo-item">
-              <span class="geo-label">Reach</span>
-              <span class="geo-val">${b.reach}</span>
-              <span class="geo-delta ${deltaClass(d.reach)}">${deltaStr(d.reach)}mm</span>
-            </div>
-            <div class="geo-item">
-              <span class="geo-label">S/R Ratio</span>
-              <span class="geo-val">${b.sr}</span>
-              <span class="geo-delta ${deltaClass(d.sr * 100)}">${d.sr > 0 ? "+" : ""}${d.sr}</span>
-            </div>
-          </div>
-          <div class="card-actions">
-            <label class="compare-check">
-              <input type="checkbox" class="compare-cb" data-idx="${i}" ${checked ? "checked" : ""}>
-              Compare
-            </label>
-            <button class="detail-toggle" data-idx="${i}">Details</button>
-          </div>
-          <div class="card-details" id="details-${i}">
-            <div class="detail-grid">
-              <div class="detail-row"><span class="dlabel">Eff. Top Tube</span><span class="dval">${b.ett}mm <small class="${deltaClass(d.ett)}">(${deltaStr(d.ett)})</small></span></div>
-              <div class="detail-row"><span class="dlabel">Head Tube</span><span class="dval">${b.htLength}mm</span></div>
-              <div class="detail-row"><span class="dlabel">Seat Tube</span><span class="dval">${b.stLength}mm <small class="${deltaClass(d.seatTube)}">(${deltaStr(d.seatTube)})</small></span></div>
-              <div class="detail-row"><span class="dlabel">HT Angle</span><span class="dval">${b.htAngle}&deg;</span></div>
-              <div class="detail-row"><span class="dlabel">ST Angle</span><span class="dval">${b.stAngle}&deg;</span></div>
-              <div class="detail-row"><span class="dlabel">Chainstay</span><span class="dval">${b.chainstay}mm</span></div>
-              <div class="detail-row"><span class="dlabel">Wheelbase</span><span class="dval">${b.wheelbase}mm</span></div>
-              <div class="detail-row"><span class="dlabel">BB Drop</span><span class="dval">${b.bbDrop}mm</span></div>
-              ${b.standover ? `<div class="detail-row"><span class="dlabel">Standover</span><span class="dval">${b.standover}mm</span></div>` : ""}
-            </div>
-            <div class="fit-explanation">${FitEngine.explainFit(r, ideal)}</div>
-          </div>
-        </div>`;
+          </td>
+        </tr>`;
     }).join("");
 
-    // Detail toggles
-    grid.querySelectorAll(".detail-toggle").forEach(btn => {
-      btn.addEventListener("click", () => {
-        const det = $(`#details-${btn.dataset.idx}`);
-        det.classList.toggle("open");
-        btn.textContent = det.classList.contains("open") ? "Hide" : "Details";
+    // Row click to expand details
+    tbody.querySelectorAll(".result-row").forEach(row => {
+      row.addEventListener("click", (e) => {
+        if (e.target.type === "checkbox") return;
+        const idx = row.dataset.idx;
+        const det = $(`#detail-${idx}`);
+        det.classList.toggle("hidden");
+        row.classList.toggle("expanded");
       });
     });
 
     // Compare checkboxes
-    grid.querySelectorAll(".compare-cb").forEach(cb => {
+    tbody.querySelectorAll(".compare-cb").forEach(cb => {
       cb.addEventListener("change", () => {
         const idx = parseInt(cb.dataset.idx);
         const filtered = getFilteredResults();
@@ -268,9 +321,31 @@
     });
   }
 
+  // ── Column sorting ──
+  $$(".results-table th.sortable").forEach(th => {
+    th.addEventListener("click", () => {
+      const key = th.dataset.sort;
+      if (currentSort.key === key) {
+        currentSort.dir = currentSort.dir === "desc" ? "asc" : "desc";
+      } else {
+        currentSort.key = key;
+        currentSort.dir = (key === "brand") ? "asc" : "desc";
+      }
+      // Update header arrows
+      $$(".results-table th.sortable").forEach(h => {
+        h.classList.remove("sorted", "asc", "desc");
+        h.querySelector(".sort-arrow").textContent = "";
+      });
+      th.classList.add("sorted", currentSort.dir);
+      th.querySelector(".sort-arrow").textContent = currentSort.dir === "asc" ? "▲" : "▼";
+
+      renderTable(getFilteredResults());
+    });
+  });
+
   // ── Filters ──
-  ["sort-select", "brand-filter", "fit-filter"].forEach(id => {
-    $(`#${id}`).addEventListener("change", () => renderGrid(getFilteredResults()));
+  ["brand-filter", "fit-filter", "price-filter", "bikepack-filter"].forEach(id => {
+    $(`#${id}`).addEventListener("change", () => renderTable(getFilteredResults()));
   });
 
   // ── Compare panel ──
@@ -291,7 +366,7 @@
   $("#compare-clear").addEventListener("click", () => {
     compareList = [];
     updateComparePanel();
-    renderGrid(getFilteredResults());
+    renderTable(getFilteredResults());
   });
 
   // ── Compare modal ──
@@ -311,6 +386,9 @@
   function renderComparison() {
     const fields = [
       ["Fit Score", r => r.score + "%", (a, b) => parseInt(a) > parseInt(b)],
+      ["Value Score", r => r.valueScore > 0 ? r.valueScore : "—", (a, b) => parseInt(a) > parseInt(b)],
+      ["Price", r => r.bike.price ? "$" + r.bike.price.toLocaleString() : "—"],
+      ["Bikepacking", r => ["—", "★", "★★", "★★★"][r.bike.bikepack]],
       ["Stack", r => r.bike.stack + "mm", (a, b) => Math.abs(parseInt(a) - ideal.stack) < Math.abs(parseInt(b) - ideal.stack)],
       ["Reach", r => r.bike.reach + "mm", (a, b) => Math.abs(parseInt(a) - ideal.reach) < Math.abs(parseInt(b) - ideal.reach)],
       ["S/R Ratio", r => r.bike.sr, (a, b) => Math.abs(parseFloat(a) - ideal.stackReachRatio) < Math.abs(parseFloat(b) - ideal.stackReachRatio)],
@@ -344,6 +422,9 @@
       // Ideal column
       const idealVals = {
         "Fit Score": "100%",
+        "Value Score": "—",
+        "Price": "—",
+        "Bikepacking": "—",
         "Stack": ideal.stack + "mm",
         "Reach": ideal.reach + "mm",
         "S/R Ratio": ideal.stackReachRatio,
