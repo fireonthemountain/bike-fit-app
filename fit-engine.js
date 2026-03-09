@@ -38,15 +38,15 @@ const FitEngine = (() => {
     idealStack *= (1 + profile.stackPct);
 
     // ── Ideal Reach (mm) ──
-    // Driven by torso and arm length
-    let idealReach = torsoMm * 0.35 + armLengthMm * 0.04 + 130;
+    // Primarily driven by height with arm length adjustment
+    let idealReach = heightCm * 2.12 + armLengthMm * 0.02 + 2;
     idealReach *= (1 + profile.reachPct);
 
     // ── Ideal Stack-to-Reach ratio ──
     const idealSR = (idealStack / idealReach) + profile.srShift;
 
     // ── Ideal Effective Top Tube (mm) ──
-    const idealETT = torsoMm * 0.52 + armLengthMm * 0.03 + 175;
+    const idealETT = heightCm * 3.05 + armLengthMm * 0.01 + 5;
 
     // ── Ideal Seat Tube (center-to-top) ──
     const idealST = inseamMm * 0.665;
