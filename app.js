@@ -149,8 +149,37 @@
   // ── Render results ──
   function renderResults() {
     renderSummary();
+    renderDistribution();
     populateBrandFilter();
     renderTable(getFilteredResults());
+  }
+
+  function renderDistribution() {
+    // Bucket scores into 5% increments
+    const buckets = [];
+    for (let i = 0; i < 20; i++) buckets.push({ min: i * 5, max: (i + 1) * 5, count: 0 });
+    allResults.forEach(r => {
+      const idx = Math.min(Math.floor(r.score / 5), 19);
+      buckets[idx].count++;
+    });
+
+    const maxCount = Math.max(...buckets.map(b => b.count), 1);
+    const barsEl = $("#dist-bars");
+
+    barsEl.innerHTML = buckets.map(b => {
+      const pct = (b.count / maxCount) * 100;
+      let color;
+      if (b.min >= 85) color = "var(--green)";
+      else if (b.min >= 70) color = "var(--yellow)";
+      else color = "var(--text3)";
+
+      return `<div class="dist-bar-col">
+        <div class="dist-bar" style="height:${Math.max(pct, b.count > 0 ? 3 : 0)}%;background:${color}" title="${b.min}-${b.max}%: ${b.count} bikes">
+          ${b.count > 0 ? `<span class="dist-bar-count">${b.count}</span>` : ""}
+        </div>
+        <span class="dist-bar-label">${b.min}%</span>
+      </div>`;
+    }).join("");
   }
 
   function renderSummary() {

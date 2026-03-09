@@ -214,6 +214,19 @@
         <button id="back-to-measurements" class="btn btn-secondary">Adjust Measurements</button>
       </div>
 
+      <div class="distribution-chart" id="distribution-chart">
+        <h3>Fit Score Distribution</h3>
+        <div class="dist-container">
+          <div class="dist-bars" id="dist-bars"></div>
+          <div class="dist-labels" id="dist-labels"></div>
+        </div>
+        <div class="dist-legend">
+          <span class="dist-leg-item"><span class="dist-swatch" style="background:var(--green)"></span>Excellent (85-100%)</span>
+          <span class="dist-leg-item"><span class="dist-swatch" style="background:var(--yellow)"></span>Good (70-84%)</span>
+          <span class="dist-leg-item"><span class="dist-swatch" style="background:var(--text3)"></span>Fair (&lt;70%)</span>
+        </div>
+      </div>
+
       <div class="results-controls">
         <div class="filter-group">
           <label>Brand:</label>
