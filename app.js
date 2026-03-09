@@ -5,7 +5,7 @@
   const $$ = s => document.querySelectorAll(s);
 
   let currentStep = 1;
-  const totalSteps = 4;
+  const totalSteps = 5;
   let allResults = [];
   let ideal = null;
   let compareList = [];
@@ -33,7 +33,7 @@
     const inseamCm = 32 * 2.54;
     const armspanCm = 68 * 2.54;
 
-    ideal = FitEngine.computeIdeal(heightCm, inseamCm, armspanCm, "moderate");
+    ideal = FitEngine.computeIdeal(heightCm, inseamCm, armspanCm, "moderate", "average");
     allResults = FitEngine.scoreAll(ideal);
     computeValueScores();
     renderResults();
@@ -104,16 +104,21 @@
     return document.querySelector('input[name="style"]:checked').value;
   }
 
+  function getFlexibility() {
+    return document.querySelector('input[name="flexibility"]:checked').value;
+  }
+
   // ── Calculate ──
   $("#calc-btn").addEventListener("click", () => {
-    if (!validateStep(4)) return;
+    if (!validateStep(5)) return;
 
     const heightCm = getHeight();
     const inseamCm = getInseam();
     const armspanCm = getArmspan();
     const style = getStyle();
+    const flexibility = getFlexibility();
 
-    ideal = FitEngine.computeIdeal(heightCm, inseamCm, armspanCm, style);
+    ideal = FitEngine.computeIdeal(heightCm, inseamCm, armspanCm, style, flexibility);
     allResults = FitEngine.scoreAll(ideal);
 
     // Compute value scores
@@ -186,15 +191,25 @@
 
   function renderSummary() {
     const s = ideal;
+    const hFt = Math.floor(s.heightCm / 2.54 / 12);
+    const hIn = Math.round((s.heightCm / 2.54) % 12 * 2) / 2;
     $("#fit-summary").innerHTML = `
-      <div class="fit-stat"><span class="label">Height</span><span class="value">${Math.round(s.heightCm)} cm</span></div>
-      <div class="fit-stat"><span class="label">Inseam</span><span class="value">${Math.round(s.inseamCm)} cm</span></div>
-      <div class="fit-stat"><span class="label">Arm Span</span><span class="value">${Math.round(s.armspanCm)} cm</span></div>
+      <div class="fit-stat"><span class="label">Height</span><span class="value">${hFt}'${hIn}"</span></div>
+      <div class="fit-stat"><span class="label">Inseam</span><span class="value">${Math.round(s.inseamCm / 2.54)}"</span></div>
+      <div class="fit-stat"><span class="label">Arm Span</span><span class="value">${Math.round(s.armspanCm / 2.54)}"</span></div>
       <div class="fit-stat"><span class="label">Style</span><span class="value">${s.styleLabel}</span></div>
+      <div class="fit-stat"><span class="label">Flexibility</span><span class="value">${s.flexLabel}</span></div>
       <div class="fit-stat"><span class="label">Ideal Stack</span><span class="value">${s.stack} mm</span></div>
       <div class="fit-stat"><span class="label">Ideal Reach</span><span class="value">${s.reach} mm</span></div>
       <div class="fit-stat"><span class="label">S/R Ratio</span><span class="value">${s.stackReachRatio}</span></div>
       <div class="fit-stat"><span class="label">Bikes Analyzed</span><span class="value">${allResults.length}</span></div>
+    `;
+    $("#fit-recs").innerHTML = `
+      <div class="rec-row">
+        <div class="rec-item"><span class="rec-icon">&#9906;</span><span class="rec-label">Saddle Height</span><span class="rec-val">${s.saddleHeight} mm</span><span class="rec-note">BB center to saddle top (LeMond method)</span></div>
+        <div class="rec-item"><span class="rec-icon">&#9776;</span><span class="rec-label">Handlebar Width</span><span class="rec-val">${s.handlebarWidth} mm</span><span class="rec-note">Match shoulder width for gravel</span></div>
+        <div class="rec-item"><span class="rec-icon">&#9650;</span><span class="rec-label">Seat Tube</span><span class="rec-val">${s.seatTube} mm</span><span class="rec-note">Center-to-top ideal</span></div>
+      </div>
     `;
   }
 

@@ -3,56 +3,76 @@
 
 const FitEngine = (() => {
 
-  // Style multipliers: [stackReachRatioAdj, reachBias, stackBias]
+  // Style profiles affect stack/reach balance
   const STYLE_PROFILES = {
-    aggressive: { srShift: -0.04, reachPct: 0.005, stackPct: -0.008, label: "Race / Aggressive" },
+    aggressive: { srShift: -0.06, reachPct: 0.008, stackPct: -0.012, label: "Race / Aggressive" },
     moderate:   { srShift:  0.00, reachPct: 0.000, stackPct:  0.000, label: "All-Round" },
-    endurance:  { srShift:  0.04, reachPct:-0.005, stackPct:  0.008, label: "Endurance / Upright" },
+    endurance:  { srShift:  0.06, reachPct:-0.008, stackPct:  0.012, label: "Endurance / Upright" },
+  };
+
+  // Flexibility affects how low/aggressive the position can be
+  const FLEX_PROFILES = {
+    limited:   { stackAdj: 15, reachAdj: -8, label: "Limited" },    // needs higher stack, shorter reach
+    average:   { stackAdj: 0,  reachAdj: 0,  label: "Average" },
+    flexible:  { stackAdj: -10, reachAdj: 5, label: "Very Flexible" }, // can go lower, longer
   };
 
   /**
    * Derive ideal geometry from body measurements.
-   * @param {number} heightCm
-   * @param {number} inseamCm
-   * @param {number} armspanCm
-   * @param {string} style - aggressive | moderate | endurance
-   * @returns {object} ideal geometry targets
+   * Uses LeMond-inspired torso+arm method for reach, inseam-driven stack.
+   * Gravel-specific: higher S/R ratio (1.45-1.60) vs road (1.33-1.45).
    */
-  function computeIdeal(heightCm, inseamCm, armspanCm, style) {
+  function computeIdeal(heightCm, inseamCm, armspanCm, style, flexibility) {
     const profile = STYLE_PROFILES[style] || STYLE_PROFILES.moderate;
+    const flex = FLEX_PROFILES[flexibility] || FLEX_PROFILES.average;
 
     // Convert to mm for all geometry calculations
     const heightMm = heightCm * 10;
     const inseamMm = inseamCm * 10;
     const armspanMm = armspanCm * 10;
 
-    // Torso length estimate
+    // Torso length: height - inseam - head (~220mm)
     const torsoMm = heightMm - inseamMm - 220;
 
-    // Arm length estimate from ape index
+    // Arm length from ape index
     const armLengthMm = (armspanMm - heightMm) / 2 + (heightMm * 0.44 - torsoMm);
 
     // ── Ideal Stack (mm) ──
-    // Primarily driven by inseam length
-    let idealStack = inseamMm * 0.67 + 8;
+    // Inseam-driven with flexibility adjustment
+    // Gravel bikes run ~10-15mm higher stack than road
+    let idealStack = inseamMm * 0.67 + 8 + flex.stackAdj;
     idealStack *= (1 + profile.stackPct);
 
     // ── Ideal Reach (mm) ──
-    // Primarily driven by height with arm length adjustment
-    let idealReach = heightCm * 2.12 + armLengthMm * 0.02 + 2;
+    // LeMond-inspired: (torso + arm) / 2 drives cockpit length
+    // We use height as primary with arm adjustment (more stable than torso alone)
+    // Gravel: ~20mm shorter reach than road equivalent
+    let idealReach = heightCm * 2.12 + armLengthMm * 0.02 + 2 + flex.reachAdj - 20;
     idealReach *= (1 + profile.reachPct);
 
     // ── Ideal Stack-to-Reach ratio ──
+    // Gravel target: 1.45-1.60 (higher than road's 1.33-1.45)
     const idealSR = (idealStack / idealReach) + profile.srShift;
 
     // ── Ideal Effective Top Tube (mm) ──
+    // LeMond: (torso + arm) / 2 + 40mm = TT + stem
+    // We approximate for the frame only (minus ~100mm stem)
     const idealETT = heightCm * 3.05 + armLengthMm * 0.01 + 5;
 
     // ── Ideal Seat Tube (center-to-top) ──
     const idealST = inseamMm * 0.665;
 
     // ── Ideal Standover ──
-    const idealStandover = inseamMm - 50; // 50mm clearance
+    const idealStandover = inseamMm - 50;
+
+    // ── Saddle Height (LeMond method: inseam × 0.883) ──
+    // Measured from center of BB to top of saddle
+    const saddleHeight = Math.round(inseamMm * 0.883);
+
+    // ── Handlebar Width ──
+    // Shoulder width ≈ armspan × 0.235, handlebars = shoulder width or slightly wider for gravel
+    const shoulderWidthMm = armspanMm * 0.235;
+    const handlebarWidth = Math.round(shoulderWidthMm / 10) * 10; // round to nearest 10mm
 
     return {
       stack: Math.round(idealStack),
@@ -61,11 +81,15 @@ const FitEngine = (() => {
       ett: Math.round(idealETT),
       seatTube: Math.round(idealST),
       standover: Math.round(idealStandover),
+      saddleHeight,
+      handlebarWidth,
       heightCm,
       inseamCm,
       armspanCm,
       style,
       styleLabel: profile.label,
+      flexibility: flexibility || "average",
+      flexLabel: flex.label,
     };
   }
 
@@ -237,5 +261,5 @@ const FitEngine = (() => {
     return Math.exp(-0.5 * (delta / sigma) ** 2);
   }
 
-  return { computeIdeal, scoreAll, explainFit, STYLE_PROFILES };
+  return { computeIdeal, scoreAll, explainFit, STYLE_PROFILES, FLEX_PROFILES };
 })();

@@ -12,7 +12,7 @@
     <header class="hero">
       <div class="hero-inner">
         <h1>Gravel Bike Fit Calculator</h1>
-        <p class="subtitle">4 simple measurements. Every gravel bike geometry analyzed. Your perfect fit — found.</p>
+        <p class="subtitle">5 simple inputs. Every gravel bike geometry analyzed. Your perfect fit — found.</p>
         <button id="start-btn" class="btn btn-primary">Find My Bike</button>
         <br><button id="test-btn" class="btn btn-secondary" style="margin-top:.5rem;font-size:.85rem">Load Test Profile (6'1" / 32" / 68")</button>
       </div>
@@ -119,8 +119,55 @@
         </div>
       </div>
 
-      <!-- Step 4: Riding Style -->
+      <!-- Step 4: Flexibility -->
       <div class="step" data-step="4">
+        <div class="step-content">
+          <div class="step-illustration">
+            <svg viewBox="0 0 200 250" class="body-diagram">
+              <!-- Stick figure bending forward -->
+              <circle cx="100" cy="40" r="16" fill="none" stroke="#333" stroke-width="2"/>
+              <line x1="100" y1="56" x2="100" y2="130" stroke="#333" stroke-width="2"/>
+              <line x1="100" y1="80" x2="65" y2="120" stroke="#333" stroke-width="2"/>
+              <line x1="100" y1="80" x2="135" y2="120" stroke="#333" stroke-width="2"/>
+              <line x1="100" y1="130" x2="80" y2="220" stroke="#333" stroke-width="2"/>
+              <line x1="100" y1="130" x2="120" y2="220" stroke="#333" stroke-width="2"/>
+              <!-- Bend indicator arc -->
+              <path d="M 65 120 Q 100 160 135 120" fill="none" stroke="#e74c3c" stroke-width="2" stroke-dasharray="4"/>
+              <text x="85" y="175" class="dim-label" style="font-size:12px">Flex</text>
+            </svg>
+          </div>
+          <div class="step-form">
+            <h2>Flexibility</h2>
+            <p class="step-desc">How flexible are you? This affects how low your handlebars can comfortably go.</p>
+            <div class="style-options">
+              <label class="style-card">
+                <input type="radio" name="flexibility" value="limited">
+                <div class="card-inner">
+                  <strong>Limited</strong>
+                  <span>Can't touch toes. New to cycling or desk-bound lifestyle.</span>
+                </div>
+              </label>
+              <label class="style-card">
+                <input type="radio" name="flexibility" value="average" checked>
+                <div class="card-inner">
+                  <strong>Average</strong>
+                  <span>Can touch toes. Some cycling experience, moderate activity level.</span>
+                </div>
+              </label>
+              <label class="style-card">
+                <input type="radio" name="flexibility" value="flexible">
+                <div class="card-inner">
+                  <strong>Very Flexible</strong>
+                  <span>Palms to floor. Regular stretching, yoga, or years of cycling.</span>
+                </div>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 5: Riding Style -->
+      <div class="step" data-step="5">
         <div class="step-content">
           <div class="step-illustration">
             <svg viewBox="0 0 300 200" class="body-diagram wide">
@@ -188,6 +235,7 @@
       <div class="results-header">
         <h2>Your Bike Fit Results</h2>
         <div class="fit-summary" id="fit-summary"></div>
+        <div class="fit-recs" id="fit-recs"></div>
         <button id="back-to-measurements" class="btn btn-secondary">Adjust Measurements</button>
       </div>
 
