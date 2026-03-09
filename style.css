@@ -168,6 +168,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .detail-row-item .dlabel{color:var(--text3)}
 .detail-row-item .dval{font-weight:600}
 
+.adj-bump{color:var(--green);font-weight:600;font-size:.7rem}
+.stem-rec{margin-bottom:.5rem;padding:.6rem .75rem;background:rgba(79,140,255,.08);border:1px solid rgba(79,140,255,.2);border-radius:6px;font-size:.85rem;color:var(--accent)}
+.stem-rec strong{color:var(--text)}
+
 .fit-explanation{margin-top:.75rem;padding:.75rem;background:var(--bg3);border-radius:8px;font-size:.85rem;color:var(--text2);line-height:1.5}
 
 /* Compare panel */

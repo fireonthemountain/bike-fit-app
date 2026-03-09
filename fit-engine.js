@@ -69,9 +69,39 @@ const FitEngine = (() => {
     };
   }
 
+  // Stem/spacer adjustment limits (mm)
+  const STEM_REACH_RANGE = [-30, 30];  // shorter to longer stem vs stock 100mm
+  const SPACER_STACK_RANGE = [-15, 25]; // remove spacers / flip stem to add spacers
+
+  /**
+   * Compute raw score from deltas (returns 0-1).
+   */
+  function rawScore(dStack, dReach, dETT, dST, dSR, standover, idealStandover) {
+    const scoreStack = gaussian(dStack, 22);
+    const scoreReach = gaussian(dReach, 15);
+    const scoreSR    = gaussian(dSR, 0.035);
+    const scoreETT   = gaussian(dETT, 18);
+    const scoreST    = gaussian(dST, 25);
+
+    let standoverPenalty = 0;
+    if (standover > 0 && idealStandover > 0) {
+      if (standover > idealStandover + 10) {
+        standoverPenalty = Math.min(0.3, (standover - idealStandover - 10) * 0.02);
+      }
+    }
+
+    return (
+      scoreReach * 0.30 +
+      scoreStack * 0.25 +
+      scoreSR    * 0.20 +
+      scoreETT   * 0.15 +
+      scoreST    * 0.10
+    ) - standoverPenalty;
+  }
+
   /**
    * Score a single bike against ideal targets.
-   * Returns 0–100 score with breakdown.
+   * Returns 0–100 score with breakdown, plus adjusted score with optimal stem/spacers.
    */
   function scoreBike(bike, ideal) {
     const stack    = bike[B.STACK];
@@ -79,50 +109,70 @@ const FitEngine = (() => {
     const ett      = bike[B.ETT];
     const stLen    = bike[B.ST_LEN];
     const standover= bike[B.STANDOVER];
-    const sr       = stack / reach;
+    const htAngle  = bike[B.HT_ANG] * Math.PI / 180;
 
-    // Deltas (mm)
+    // Stock deltas
     const dStack = stack - ideal.stack;
     const dReach = reach - ideal.reach;
     const dETT   = ett - ideal.ett;
     const dST    = stLen - ideal.seatTube;
+    const sr     = stack / reach;
     const dSR    = sr - ideal.stackReachRatio;
 
-    // Scoring weights
-    // Stack-reach relationship is the most important for fit
-    const scoreStack = gaussian(dStack, 22);   // ±22mm = 1σ
-    const scoreReach = gaussian(dReach, 15);   // ±15mm = 1σ (reach is more sensitive)
-    const scoreSR    = gaussian(dSR, 0.035);   // ±0.035 ratio
-    const scoreETT   = gaussian(dETT, 18);
-    const scoreST    = gaussian(dST, 25);      // seat tube is less critical (seatpost adjusts)
+    // Stock score
+    const stockRaw = rawScore(dStack, dReach, dETT, dST, dSR, standover, ideal.standover);
+    const score = Math.max(0, Math.min(100, Math.round(stockRaw * 100)));
 
-    // Standover check (hard pass/fail with soft penalty)
-    let standoverPenalty = 0;
-    if (standover > 0 && ideal.standover > 0) {
-      if (standover > ideal.standover + 10) {
-        standoverPenalty = Math.min(0.3, (standover - ideal.standover - 10) * 0.02);
+    // Adjusted score: find optimal stem length delta and spacer delta
+    // Stem change affects reach (≈cos(htAngle)*delta) and stack (≈sin(htAngle)*delta) slightly
+    // Spacers affect stack directly
+    let bestAdj = stockRaw;
+    let bestStemDelta = 0;
+    let bestSpacerDelta = 0;
+
+    for (let stemD = STEM_REACH_RANGE[0]; stemD <= STEM_REACH_RANGE[1]; stemD += 5) {
+      for (let spacerD = SPACER_STACK_RANGE[0]; spacerD <= SPACER_STACK_RANGE[1]; spacerD += 5) {
+        const adjReach = reach + stemD * Math.cos(htAngle);
+        const adjStack = stack + spacerD + stemD * Math.sin(htAngle);
+        const adjETT = ett + stemD; // ETT changes ~1:1 with stem length
+        const adjSR = adjStack / adjReach;
+
+        const adjRaw = rawScore(
+          adjStack - ideal.stack,
+          adjReach - ideal.reach,
+          adjETT - ideal.ett,
+          dST,
+          adjSR - ideal.stackReachRatio,
+          standover, ideal.standover
+        );
+
+        if (adjRaw > bestAdj) {
+          bestAdj = adjRaw;
+          bestStemDelta = stemD;
+          bestSpacerDelta = spacerD;
+        }
       }
     }
 
-    // Weighted composite
-    const raw = (
-      scoreReach * 0.30 +
-      scoreStack * 0.25 +
-      scoreSR    * 0.20 +
-      scoreETT   * 0.15 +
-      scoreST    * 0.10
-    ) - standoverPenalty;
-
-    const score = Math.max(0, Math.min(100, Math.round(raw * 100)));
+    const adjScore = Math.max(0, Math.min(100, Math.round(bestAdj * 100)));
 
     let rating;
     if (score >= 85) rating = "excellent";
     else if (score >= 70) rating = "good";
     else rating = "fair";
 
+    let adjRating;
+    if (adjScore >= 85) adjRating = "excellent";
+    else if (adjScore >= 70) adjRating = "good";
+    else adjRating = "fair";
+
     return {
       score,
       rating,
+      adjScore,
+      adjRating,
+      stemDelta: bestStemDelta,
+      spacerDelta: bestSpacerDelta,
       deltas: { stack: dStack, reach: dReach, ett: dETT, seatTube: dST, sr: Math.round(dSR * 1000) / 1000 },
       actuals: { stack, reach, ett, sr: Math.round(sr * 1000) / 1000, stLen, standover },
       bike: {

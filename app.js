@@ -285,6 +285,7 @@
         return dir * va.localeCompare(vb);
       }
       if (sk === "score") { va = a.score; vb = b.score; }
+      else if (sk === "adjScore") { va = a.adjScore; vb = b.adjScore; }
       else if (sk === "value") { va = a.valueScore; vb = b.valueScore; }
       else if (sk === "stack") { va = a.bike.stack; vb = b.bike.stack; }
       else if (sk === "reach") { va = a.bike.reach; vb = b.bike.reach; }
@@ -318,7 +319,7 @@
     $("#result-count").textContent = `${results.length} bike${results.length !== 1 ? "s" : ""} found`;
 
     if (results.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--text3)">No bikes match your filters.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:2rem;color:var(--text3)">No bikes match your filters.</td></tr>';
       return;
     }
 
@@ -340,6 +341,7 @@
             </div>
           </td>
           <td class="col-score"><span class="fit-badge ${r.rating}">${r.score}%</span></td>
+          <td class="col-score"><span class="fit-badge ${r.adjRating}">${r.adjScore}%</span>${r.adjScore > r.score ? ' <small class="adj-bump">+' + (r.adjScore - r.score) + '</small>' : ''}</td>
           <td class="col-value">${r.valueScore > 0 ? r.valueScore : '—'}</td>
           <td class="col-num">${b.stack} <small class="geo-delta ${deltaClass(d.stack)}">${deltaStr(d.stack)}</small></td>
           <td class="col-num">${b.reach} <small class="geo-delta ${deltaClass(d.reach)}">${deltaStr(d.reach)}</small></td>
@@ -351,7 +353,7 @@
           </td>
         </tr>
         <tr class="detail-row hidden" id="detail-${i}">
-          <td colspan="9">
+          <td colspan="10">
             <div class="detail-content">
               <div class="detail-grid">
                 <div class="detail-row-item"><span class="dlabel">Eff. Top Tube</span><span class="dval">${b.ett}mm <small class="${deltaClass(d.ett)}">(${deltaStr(d.ett)})</small></span></div>
@@ -364,6 +366,7 @@
                 <div class="detail-row-item"><span class="dlabel">BB Drop</span><span class="dval">${b.bbDrop}mm</span></div>
                 ${b.standover ? `<div class="detail-row-item"><span class="dlabel">Standover</span><span class="dval">${b.standover}mm</span></div>` : ""}
               </div>
+              ${r.adjScore > r.score ? `<div class="stem-rec"><strong>Stem/Spacer Adjustment:</strong> ${r.stemDelta > 0 ? "+" + r.stemDelta + "mm stem (longer)" : r.stemDelta < 0 ? r.stemDelta + "mm stem (shorter)" : "stock stem"}${r.spacerDelta !== 0 ? (r.stemDelta !== 0 ? ", " : "") + (r.spacerDelta > 0 ? "+" + r.spacerDelta + "mm spacers" : r.spacerDelta + "mm spacers (remove/flip stem)") : ""} → ${r.adjScore}% fit</div>` : ""}
               <div class="fit-explanation">${FitEngine.explainFit(r, ideal)}</div>
             </div>
           </td>
