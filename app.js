@@ -198,23 +198,70 @@
     `;
   }
 
+  let selectedBrands = new Set(); // empty = all
+
   function populateBrandFilter() {
     const brands = [...new Set(allResults.map(r => r.bike.brand))].sort();
-    const sel = $("#brand-filter");
-    sel.innerHTML = '<option value="all">All Brands</option>';
-    brands.forEach(b => {
-      sel.innerHTML += `<option value="${b}">${b}</option>`;
+    selectedBrands = new Set(brands); // start with all selected
+    const opts = $("#brand-options");
+    opts.innerHTML = brands.map(b =>
+      `<label class="ms-option"><input type="checkbox" value="${b}" checked>${b}</label>`
+    ).join("");
+
+    opts.querySelectorAll("input").forEach(cb => {
+      cb.addEventListener("change", () => {
+        if (cb.checked) selectedBrands.add(cb.value);
+        else selectedBrands.delete(cb.value);
+        updateBrandToggleLabel();
+        renderTable(getFilteredResults());
+      });
     });
+
+    $("#brand-select-all").addEventListener("click", () => {
+      selectedBrands = new Set(brands);
+      opts.querySelectorAll("input").forEach(cb => cb.checked = true);
+      updateBrandToggleLabel();
+      renderTable(getFilteredResults());
+    });
+
+    $("#brand-select-none").addEventListener("click", () => {
+      selectedBrands.clear();
+      opts.querySelectorAll("input").forEach(cb => cb.checked = false);
+      updateBrandToggleLabel();
+      renderTable(getFilteredResults());
+    });
+
+    updateBrandToggleLabel();
   }
+
+  function updateBrandToggleLabel() {
+    const allBrands = [...new Set(allResults.map(r => r.bike.brand))];
+    const btn = $("#brand-toggle");
+    if (selectedBrands.size === 0) btn.innerHTML = 'No Brands <span class="ms-arrow">▾</span>';
+    else if (selectedBrands.size === allBrands.length) btn.innerHTML = 'All Brands <span class="ms-arrow">▾</span>';
+    else btn.innerHTML = `<span class="ms-badge">${selectedBrands.size}</span> Brand${selectedBrands.size !== 1 ? "s" : ""} <span class="ms-arrow">▾</span>`;
+  }
+
+  // Toggle dropdown
+  $("#brand-toggle").addEventListener("click", (e) => {
+    e.stopPropagation();
+    $("#brand-dropdown").classList.toggle("hidden");
+  });
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest("#brand-multi")) $("#brand-dropdown").classList.add("hidden");
+  });
 
   function getFilteredResults() {
     let results = [...allResults];
-    const brand = $("#brand-filter").value;
     const fit = $("#fit-filter").value;
     const price = $("#price-filter").value;
     const bikepack = $("#bikepack-filter").value;
 
-    if (brand !== "all") results = results.filter(r => r.bike.brand === brand);
+    if (selectedBrands.size > 0 && selectedBrands.size < new Set(allResults.map(r => r.bike.brand)).size) {
+      results = results.filter(r => selectedBrands.has(r.bike.brand));
+    } else if (selectedBrands.size === 0) {
+      results = [];
+    }
     if (fit === "excellent") results = results.filter(r => r.rating === "excellent");
     else if (fit === "good") results = results.filter(r => r.rating === "excellent" || r.rating === "good");
 
@@ -375,7 +422,7 @@
   });
 
   // ── Filters ──
-  ["brand-filter", "fit-filter", "price-filter", "bikepack-filter"].forEach(id => {
+  ["fit-filter", "price-filter", "bikepack-filter"].forEach(id => {
     $(`#${id}`).addEventListener("change", () => renderTable(getFilteredResults()));
   });
 
