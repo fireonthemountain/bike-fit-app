@@ -18,17 +18,28 @@
     window.scrollTo({ top: 0, behavior: "smooth" });
   });
 
-  // ── Unit toggles ──
-  $$(".unit-btn").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const field = btn.dataset.field;
-      const unit = btn.dataset.unit;
-      const group = btn.closest(".input-group");
-      group.querySelectorAll(".unit-btn").forEach(b => b.classList.remove("active"));
-      btn.classList.add("active");
-      group.querySelectorAll(".input-row").forEach(row => row.classList.add("hidden"));
-      $(`#${field}-${unit}-input`).classList.remove("hidden");
-    });
+  // ── Test profile ──
+  $("#test-btn").addEventListener("click", () => {
+    $("#height-ft").value = "6";
+    $("#height-in").value = "1";
+    $("#inseam-in").value = "32";
+    $("#armspan-in").value = "68";
+    document.querySelector('input[name="style"][value="moderate"]').checked = true;
+
+    $(".hero").classList.add("hidden");
+    $("#wizard").classList.remove("hidden");
+
+    const heightCm = (6 * 12 + 1) * 2.54;
+    const inseamCm = 32 * 2.54;
+    const armspanCm = 68 * 2.54;
+
+    ideal = FitEngine.computeIdeal(heightCm, inseamCm, armspanCm, "moderate");
+    allResults = FitEngine.scoreAll(ideal);
+    computeValueScores();
+    renderResults();
+    $("#wizard").classList.add("hidden");
+    $("#results").classList.remove("hidden");
+    window.scrollTo({ top: 0, behavior: "smooth" });
   });
 
   // ── Wizard navigation ──
@@ -54,15 +65,15 @@
   function validateStep(step) {
     if (step === 1) {
       const h = getHeight();
-      if (!h || h < 140 || h > 215) { shake(step); return false; }
+      if (!h || h < 137 || h > 218) { shake(step); return false; }
     }
     if (step === 2) {
       const i = getInseam();
-      if (!i || i < 60 || i > 105) { shake(step); return false; }
+      if (!i || i < 58 || i > 107) { shake(step); return false; }
     }
     if (step === 3) {
       const a = getArmspan();
-      if (!a || a < 140 || a > 225) { shake(step); return false; }
+      if (!a || a < 137 || a > 224) { shake(step); return false; }
     }
     return true;
   }
@@ -74,27 +85,18 @@
     el.style.animation = "shake 0.4s ease";
   }
 
-  // ── Read measurements ──
+  // ── Read measurements (inches → cm) ──
   function getHeight() {
-    if (!$(`#height-cm-input`).classList.contains("hidden")) {
-      return parseFloat($("#height-cm").value);
-    }
     const ft = parseFloat($("#height-ft").value) || 0;
     const inches = parseFloat($("#height-in").value) || 0;
     return (ft * 12 + inches) * 2.54;
   }
 
   function getInseam() {
-    if (!$(`#inseam-cm-input`).classList.contains("hidden")) {
-      return parseFloat($("#inseam-cm").value);
-    }
     return parseFloat($("#inseam-in").value) * 2.54;
   }
 
   function getArmspan() {
-    if (!$(`#armspan-cm-input`).classList.contains("hidden")) {
-      return parseFloat($("#armspan-cm").value);
-    }
     return parseFloat($("#armspan-in").value) * 2.54;
   }
 

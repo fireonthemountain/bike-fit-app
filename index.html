@@ -14,6 +14,7 @@
         <h1>Gravel Bike Fit Calculator</h1>
         <p class="subtitle">4 simple measurements. Every gravel bike geometry analyzed. Your perfect fit — found.</p>
         <button id="start-btn" class="btn btn-primary">Find My Bike</button>
+        <br><button id="test-btn" class="btn btn-secondary" style="margin-top:.5rem;font-size:.85rem">Load Test Profile (6'1" / 32" / 68")</button>
       </div>
     </header>
 
@@ -46,18 +47,10 @@
             <h2>Your Height</h2>
             <p class="step-desc">Stand barefoot against a wall. Measure from the floor to the top of your head.</p>
             <div class="input-group">
-              <div class="unit-toggle">
-                <button class="unit-btn active" data-unit="cm" data-field="height">cm</button>
-                <button class="unit-btn" data-unit="in" data-field="height">in</button>
-              </div>
-              <div class="input-row" id="height-cm-input">
-                <input type="number" id="height-cm" placeholder="175" min="140" max="210" step="0.5">
-                <span class="unit">cm</span>
-              </div>
-              <div class="input-row hidden" id="height-in-input">
-                <input type="number" id="height-ft" placeholder="5" min="4" max="7" step="1" class="small-input">
+              <div class="input-row">
+                <input type="number" id="height-ft" placeholder="6" min="4" max="7" step="1" class="small-input">
                 <span class="unit">ft</span>
-                <input type="number" id="height-in" placeholder="9" min="0" max="11" step="0.5" class="small-input">
+                <input type="number" id="height-in" placeholder="1" min="0" max="11" step="0.5" class="small-input">
                 <span class="unit">in</span>
               </div>
             </div>
@@ -85,17 +78,9 @@
           </div>
           <div class="step-form">
             <h2>Inseam Length</h2>
-            <p class="step-desc">Stand with feet ~15cm apart. Place a book snugly in your crotch. Measure from the top of the book to the floor.</p>
+            <p class="step-desc">Stand with feet ~6" apart. Place a book snugly in your crotch. Measure from the top of the book to the floor.</p>
             <div class="input-group">
-              <div class="unit-toggle">
-                <button class="unit-btn active" data-unit="cm" data-field="inseam">cm</button>
-                <button class="unit-btn" data-unit="in" data-field="inseam">in</button>
-              </div>
-              <div class="input-row" id="inseam-cm-input">
-                <input type="number" id="inseam-cm" placeholder="82" min="60" max="105" step="0.5">
-                <span class="unit">cm</span>
-              </div>
-              <div class="input-row hidden" id="inseam-in-input">
+              <div class="input-row">
                 <input type="number" id="inseam-in" placeholder="32" min="24" max="42" step="0.25">
                 <span class="unit">in</span>
               </div>
@@ -125,16 +110,8 @@
             <h2>Arm Span</h2>
             <p class="step-desc">Stand against a wall with arms outstretched. Measure fingertip to fingertip.</p>
             <div class="input-group">
-              <div class="unit-toggle">
-                <button class="unit-btn active" data-unit="cm" data-field="armspan">cm</button>
-                <button class="unit-btn" data-unit="in" data-field="armspan">in</button>
-              </div>
-              <div class="input-row" id="armspan-cm-input">
-                <input type="number" id="armspan-cm" placeholder="178" min="140" max="220" step="0.5">
-                <span class="unit">cm</span>
-              </div>
-              <div class="input-row hidden" id="armspan-in-input">
-                <input type="number" id="armspan-in" placeholder="70" min="55" max="87" step="0.25">
+              <div class="input-row">
+                <input type="number" id="armspan-in" placeholder="68" min="55" max="87" step="0.25">
                 <span class="unit">in</span>
               </div>
             </div>
