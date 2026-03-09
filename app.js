@@ -383,6 +383,132 @@
     if (e.target === $("#compare-modal")) $("#compare-modal").classList.add("hidden");
   });
 
+  // ── Geometry overlay SVG ──
+  function renderGeometryOverlay() {
+    const svg = $("#overlay-svg");
+    const colors = ["#4f8cff", "#6c5ce7", "#00d67e"];
+    const idealColor = "#e74c3c";
+
+    // Legend
+    let legendHtml = "";
+    compareList.forEach((r, i) => {
+      legendHtml += `<div class="legend-item"><span class="legend-swatch" style="background:${colors[i]}"></span>${r.bike.brand} ${r.bike.model} (${r.bike.size})</div>`;
+    });
+    legendHtml += `<div class="legend-item"><span class="legend-swatch" style="background:${idealColor};height:2px;border-top:1px dashed ${idealColor}"></span>Your Ideal</div>`;
+    $("#overlay-legend").innerHTML = legendHtml;
+
+    // Compute frame geometry points for each bike
+    // All bikes aligned at bottom bracket (BB). We draw:
+    // BB -> Seat tube top (using ST angle + ST length)
+    // BB -> Head tube bottom (using reach/stack to find HT bottom, then HT angle + HT length for HT top)
+    // Rear axle (BB - chainstay, 0)
+    // Front axle (BB + fork to front axle using wheelbase - chainstay offset)
+    // Wheels drawn as circles (700c = 622mm BSD + ~50mm tire = ~336mm radius)
+
+    const wheelRadius = 336; // ~700x40c
+    const scale = 0.45; // scale mm to SVG px
+    const svgW = svg.clientWidth || 860;
+    const svgH = 400;
+    svg.setAttribute("viewBox", `0 0 ${svgW} ${svgH}`);
+
+    // Find centering offset: place BB at a good spot
+    const bbX = svgW * 0.52;
+    const bbY = svgH * 0.78;
+
+    let paths = "";
+
+    function drawBike(r, color, strokeW, dashArray) {
+      const b = r.bike;
+      const s = scale;
+
+      // Seat tube: angle from horizontal, going up-left from BB
+      const stRad = b.stAngle * Math.PI / 180;
+      const stTopX = bbX - Math.cos(stRad) * b.stLength * s;
+      const stTopY = bbY - Math.sin(stRad) * b.stLength * s;
+
+      // Head tube bottom: use stack/reach from BB
+      // Stack is vertical, reach is horizontal from BB
+      const htBottomX = bbX + b.reach * s;
+      const htBottomY = bbY - b.stack * s;
+
+      // Head tube top: extend HT length along HT angle from bottom
+      const htRad = b.htAngle * Math.PI / 180;
+      const htTopX = htBottomX - Math.cos(htRad) * b.htLength * s;
+      const htTopY = htBottomY - Math.sin(htRad) * b.htLength * s;
+
+      // Top tube: seat tube top to head tube top
+      // Down tube: BB area to head tube bottom
+
+      // Rear axle: chainstay back from BB (roughly horizontal, accounting for BB drop)
+      const rearAxleX = bbX - Math.sqrt(b.chainstay * b.chainstay - b.bbDrop * b.bbDrop) * s;
+      const rearAxleY = bbY + b.bbDrop * s;
+
+      // Front axle: wheelbase from rear axle
+      const frontAxleX = rearAxleX + b.wheelbase * s;
+      const frontAxleY = rearAxleY;
+
+      const wr = wheelRadius * s;
+      const da = dashArray ? ` stroke-dasharray="${dashArray}"` : "";
+
+      // Frame lines
+      paths += `
+        <!-- ${b.brand} ${b.model} -->
+        <line x1="${bbX}" y1="${bbY}" x2="${stTopX}" y2="${stTopY}" stroke="${color}" stroke-width="${strokeW}" opacity="0.85"${da}/>
+        <line x1="${stTopX}" y1="${stTopY}" x2="${htTopX}" y2="${htTopY}" stroke="${color}" stroke-width="${strokeW}" opacity="0.85"${da}/>
+        <line x1="${bbX}" y1="${bbY}" x2="${htBottomX}" y2="${htBottomY}" stroke="${color}" stroke-width="${strokeW}" opacity="0.85"${da}/>
+        <line x1="${htBottomX}" y1="${htBottomY}" x2="${htTopX}" y2="${htTopY}" stroke="${color}" stroke-width="${strokeW * 1.5}" opacity="0.85"${da}/>
+        <line x1="${bbX}" y1="${bbY}" x2="${rearAxleX}" y2="${rearAxleY}" stroke="${color}" stroke-width="${strokeW}" opacity="0.6"${da}/>
+        <line x1="${htBottomX}" y1="${htBottomY}" x2="${frontAxleX}" y2="${frontAxleY}" stroke="${color}" stroke-width="${strokeW}" opacity="0.6"${da}/>
+        <circle cx="${rearAxleX}" cy="${rearAxleY}" r="${wr}" fill="none" stroke="${color}" stroke-width="1" opacity="0.25"${da}/>
+        <circle cx="${frontAxleX}" cy="${frontAxleY}" r="${wr}" fill="none" stroke="${color}" stroke-width="1" opacity="0.25"${da}/>
+        <circle cx="${bbX}" cy="${bbY}" r="4" fill="${color}" opacity="0.7"/>
+      `;
+    }
+
+    // Draw ideal as dashed reference
+    if (ideal) {
+      const idealBike = {
+        bike: {
+          brand: "Ideal", model: "", size: "",
+          stack: ideal.stack, reach: ideal.reach,
+          stAngle: 73.0, htAngle: 71.5,
+          stLength: ideal.seatTube, htLength: 140,
+          chainstay: 425, wheelbase: 1020,
+          bbDrop: 72, ett: ideal.ett,
+        }
+      };
+      drawBike(idealBike, idealColor, 1.5, "6,4");
+    }
+
+    // Draw selected bikes
+    compareList.forEach((r, i) => {
+      drawBike(r, colors[i], 2.5, "");
+    });
+
+    // BB marker
+    paths += `<circle cx="${bbX}" cy="${bbY}" r="3" fill="var(--text3)"/>`;
+    paths += `<text x="${bbX + 6}" y="${bbY + 14}" class="overlay-dim">BB</text>`;
+
+    // Dimension annotations for first bike
+    if (compareList.length > 0) {
+      const b = compareList[0].bike;
+      const s = scale;
+      // Stack dimension line
+      const stackTopY = bbY - b.stack * s;
+      const dimX = bbX + b.reach * s + 20;
+      paths += `<line x1="${dimX}" y1="${bbY}" x2="${dimX}" y2="${stackTopY}" stroke="var(--text3)" stroke-width="0.5" stroke-dasharray="3,3"/>`;
+      paths += `<text x="${dimX + 4}" y="${(bbY + stackTopY) / 2 + 4}" class="overlay-dim">Stack</text>`;
+
+      // Reach dimension line
+      const dimY = bbY + 20;
+      const reachEndX = bbX + b.reach * s;
+      paths += `<line x1="${bbX}" y1="${dimY}" x2="${reachEndX}" y2="${dimY}" stroke="var(--text3)" stroke-width="0.5" stroke-dasharray="3,3"/>`;
+      paths += `<text x="${(bbX + reachEndX) / 2 - 15}" y="${dimY + 14}" class="overlay-dim">Reach</text>`;
+    }
+
+    svg.innerHTML = paths;
+  }
+
   function renderComparison() {
     const fields = [
       ["Fit Score", r => r.score + "%", (a, b) => parseInt(a) > parseInt(b)],
@@ -462,6 +588,9 @@
       chartHtml += "</div></div>";
     });
     $("#compare-chart").innerHTML = chartHtml;
+
+    // Render geometry overlay
+    renderGeometryOverlay();
   }
 
   // Shake animation
