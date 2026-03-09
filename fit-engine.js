@@ -21,33 +21,38 @@ const FitEngine = (() => {
   function computeIdeal(heightCm, inseamCm, armspanCm, style) {
     const profile = STYLE_PROFILES[style] || STYLE_PROFILES.moderate;
 
-    // Torso length estimate (height minus inseam minus head ~22cm)
-    const torso = heightCm - inseamCm - 22;
+    // Convert to mm for all geometry calculations
+    const heightMm = heightCm * 10;
+    const inseamMm = inseamCm * 10;
+    const armspanMm = armspanCm * 10;
+
+    // Torso length estimate
+    const torsoMm = heightMm - inseamMm - 220;
 
     // Arm length estimate from ape index
-    const armLength = (armspanCm - heightCm) / 2 + (heightCm * 0.44 - torso);
+    const armLengthMm = (armspanMm - heightMm) / 2 + (heightMm * 0.44 - torsoMm);
 
-    // ── Ideal Stack ──
-    // Base: ~62% of inseam, adjusted by style
-    let idealStack = inseamCm * 0.62 + torso * 0.18;
+    // ── Ideal Stack (mm) ──
+    // Primarily driven by inseam length
+    let idealStack = inseamMm * 0.67 + 8;
     idealStack *= (1 + profile.stackPct);
 
-    // ── Ideal Reach ──
-    // Base: torso * 0.95 + arm offset, capped proportionally
-    let idealReach = torso * 0.72 + armLength * 0.16 + 12;
+    // ── Ideal Reach (mm) ──
+    // Driven by torso and arm length
+    let idealReach = torsoMm * 0.35 + armLengthMm * 0.04 + 130;
     idealReach *= (1 + profile.reachPct);
 
     // ── Ideal Stack-to-Reach ratio ──
     const idealSR = (idealStack / idealReach) + profile.srShift;
 
-    // ── Ideal Effective Top Tube ──
-    const idealETT = torso * 0.98 + armLength * 0.12 + 75;
+    // ── Ideal Effective Top Tube (mm) ──
+    const idealETT = torsoMm * 0.52 + armLengthMm * 0.03 + 175;
 
     // ── Ideal Seat Tube (center-to-top) ──
-    const idealST = inseamCm * 0.665;
+    const idealST = inseamMm * 0.665;
 
     // ── Ideal Standover ──
-    const idealStandover = inseamCm - 5; // 5cm clearance
+    const idealStandover = inseamMm - 50; // 50mm clearance
 
     return {
       stack: Math.round(idealStack),
